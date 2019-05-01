@@ -1,0 +1,2 @@
+class PulsarException(Exception):
+    pass
