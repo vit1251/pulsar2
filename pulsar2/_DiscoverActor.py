@@ -17,6 +17,9 @@ class DiscoverProtocol(object):
     def connection_made(self, transport):
         self._transport = transport
 
+    def error_received(self, exc):
+        self.__log.exception(exc)
+
     def datagram_received(self, data, addr):
         """ Recv discover packet
         """
@@ -25,6 +28,7 @@ class DiscoverProtocol(object):
         self.__log.debug('Send %r to %s' % (message, addr))
         #
         self._actor._nodes[addr] = data
+
 
 class DiscoverActor(Actor):
     def __init__(self, *args, **kwargs):
