@@ -1,4 +1,5 @@
 
+from socket import socket, AF_INET, SOCK_DGRAM, SOL_SOCKET, SO_BROADCAST
 from logging import getLogger
 from asyncio import sleep
 from json import dumps
@@ -15,18 +16,6 @@ class DiscoverProtocol(object):
 
     def connection_made(self, transport):
         self._transport = transport
-
-    def notify(self, network):
-        self.__log.debug('notify: network = {network!r}'.format(network=network))
-        #
-        params = {
-            'user-agent': 'pulsar2',
-            'version': '1.0',
-        }
-        content = dumps(params)
-        packet = content.encode('latin1')
-        addr = (network, 0)
-        self._transport.sendto(packet, addr)
 
     def datagram_received(self, data, addr):
         """ Recv discover packet
@@ -46,6 +35,21 @@ class DiscoverActor(Actor):
         self._transport = None
         #
         self._commands['manage'] = self._manage
+
+    def notify(self, network):
+        self.__log.debug("notify: network = {network!r}".format(network=network))
+        cs = socket(AF_INET, SOCK_DGRAM)
+        #cs.setsockopt(SOL_SOCKET, SO_REUSEADDR, 0)
+        cs.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+        addr = (network, 9999)
+        params = {
+            'user-agent': 'pulsar2',
+            'version': '1.0',
+        }
+        content = dumps(params)
+        packet = content.encode('latin1')
+        cs.sendto(packet, addr)
+        cs.close()
 
     def _manage(self, addr=None, mask='255.255.255.0', ident=None, interval=10.0):
         """ Start discovery on network
@@ -76,7 +80,7 @@ class DiscoverActor(Actor):
         self._periodic_notify = True
         while self._periodic_notify:
             self.__log.debug('Disocvery: network = {network!r}'.format(network=network))
-            protocol.notify(network)
+            self.notify(network)
             await sleep(interval)
 
     async def _discovery_network_stop(self):
