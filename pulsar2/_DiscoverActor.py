@@ -1,5 +1,6 @@
 
 from socket import socket, AF_INET, SOCK_DGRAM, SOL_SOCKET, SO_BROADCAST
+from time import time
 from logging import getLogger
 from asyncio import sleep
 from json import dumps
@@ -23,11 +24,12 @@ class DiscoverProtocol(object):
     def datagram_received(self, data, addr):
         """ Recv discover packet
         """
-        message = data.decode()
-        self.__log.debug('Received %r from %s' % (message, addr))
-        self.__log.debug('Send %r to %s' % (message, addr))
+        msg = data.decode()
         #
-        self._actor._nodes[addr] = data
+        self.__log.info('Discover RX from {addr!r} with msg = {msg!r}'.format(addr=addr, msg=msg))
+        host, port = addr
+        #
+        self._actor._nodes[host] = time()
 
 
 class DiscoverActor(Actor):
@@ -52,6 +54,7 @@ class DiscoverActor(Actor):
         }
         content = dumps(params)
         packet = content.encode('latin1')
+        self.__log.info('Discovery TX to network {network!r} with packet = {packet!r}'.format(network=network, packet=packet))
         cs.sendto(packet, addr)
         cs.close()
 
@@ -83,7 +86,6 @@ class DiscoverActor(Actor):
 
         self._periodic_notify = True
         while self._periodic_notify:
-            self.__log.debug('Disocvery: network = {network!r}'.format(network=network))
             self.notify(network)
             await sleep(interval)
 
