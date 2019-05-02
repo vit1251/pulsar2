@@ -1,5 +1,6 @@
 
 from logging import getLogger
+from inspect import isawaitable
 from os import getpid
 from threading import current_thread
 from asyncio import Queue
@@ -106,18 +107,31 @@ class Actor(object):
         """
         self._arbiter.send(self, target, action, **kwargs)
 
+    def processMsg(self, msg):
+        """ Process message on Agent
+        """
+        self.__log.debug('processMsg: msg = {msg!r}'.format(msg=msg))
+        action = msg.get('action')
+        args = msg.get('args', [])
+        kwargs = msg.get('kwargs', {})
+        method = self._commands.get(action)
+        if callable(method):
+            self.__log.debug('invoke {method!r}'.format(method=method))
+            res = method(*args, **kwargs)
+            self.__log.debug('res = {res!r}'.format(res=res))
+            awaitable = isawaitable(res)
+            self.__log.debug('awaitable = {awaitable!r}'.format(awaitable=awaitable))
+            if awaitable:
+                self._loop.create_task(res)
+
+        else:
+            self.__log.warn('Unable invoke {action!r} in {agent!r}.'.format(action=action, agent=self))
+
     async def run(self):
         self._running = True
         while self._running:
             msg = await self._mailbox.get()
-            action = msg.get('action')
-            args = msg.get('args', [])
-            kwargs = msg.get('kwargs', {})
-            method = self._commands.get(action)
-            if callable(method):
-                result = method(*args, **kwargs)
-            else:
-                self.__log.warn('Unable invoke {action!r} in {agent!r}.'.format(action=action, agent=self))
+            self.processMsg(msg)
 
     def stop(self):
         """ Gracefully stop the Actor

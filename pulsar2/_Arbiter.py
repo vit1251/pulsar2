@@ -61,10 +61,11 @@ class Arbiter(object):
         """ An Actor communicates with another Actor by sending an action to perform.
         This action takes the form of a command name and optional positional and key-valued parameters.
         """
-        self.__log.debug("send: target = {target!r} action = {action!r}".format(target=target, action=action))
+        self.__log.debug("send: target = {target!r} action = {action!r} args = {args!r} kwargs = {kwargs!r}".format(target=target, action=action, args=args, kwargs=kwargs))
         actor = self.get_actor(target)
         if actor:
-            self._loop.create_task(actor._mailbox.put({"sender": sender, "action": action, "args": args, "kwargs": kwargs}))
+            coro = actor._mailbox.put({"sender": sender, "action": action, "args": args, "kwargs": kwargs})
+            self._loop.create_task(coro)
         else:
             self.__log.warn('Cannot execute {action!r} in {sender!r}. Unknown actor {target!r}.'.format(action=action, sender=sender, target=target))
 

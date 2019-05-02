@@ -15,7 +15,15 @@ class MySqlStoreActor(Actor):
         """
         return None
 
-    def _restore(self, key=None):
+    def _restore(self, key=None, receiver=None):
         """ Restore `value` under `key` name from MySQL
         """
-        return None
+        # Step 1. Receive value
+        data = 'Test' # TODO - replace on real MySQL request ...
+
+        # Step 1. Delivery result
+        if receiver:
+            aid, action = receiver
+            self.send(aid, action, data=data)
+        else:
+            self.__log.warn('No result receiver.')
